@@ -1,4 +1,6 @@
 /dist
+/generated
+/layers
 /node_modules
 /tmp
 yarn-debug.log*

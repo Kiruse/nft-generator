@@ -6,7 +6,9 @@ properties:
   name: { type: string }
   description: { type: string }
   collectionSize: { type: integer }
-  imageSize: { type: array, items: { type: integer } }
+  imageSize: { '$ref': '#/$defs/vector' }
+  in:  { type: string }
+  out: { type: string }
   
   restrict:
     type: object
@@ -38,8 +40,24 @@ properties:
               required: [ exact ]
               additionalProperties: false
     additionalProperties: false
+  layout:
+    type: object
+    patternProperties:
+      '.':
+        type: object
+        properties:
+          size: { '$ref': '#/$defs/vector' }
+          position: { '$ref': '#/$defs/vector' }
+        minProperties: 1
 required:
 - name
 - description
 - collectionSize
 additionalProperties: false
+
+'$defs':
+  vector:
+    type: array
+    prefixItems:
+    - type: number
+    - type: number
