@@ -1,0 +1,45 @@
+'$schema': 'https://json-schema.org/draft/2020-12/schema'
+'$id': '/schemas/config'
+
+type: object
+properties:
+  name: { type: string }
+  description: { type: string }
+  collectionSize: { type: integer }
+  imageSize: { type: array, items: { type: integer } }
+  
+  restrict:
+    type: object
+    properties:
+      mutex: # forbid other traits in same list if one of them are present
+        type: array
+        items:
+          type: array
+          items: { type: string }
+      forbid: # forbid when all of these traits are present
+        type: array
+        items:
+          type: array
+          items: { type: string }
+      limit: # limit the maximum number of times a trait can appear
+        patternProperties:
+          '.':
+            oneOf:
+            - type: integer # max
+            - type: object
+              properties: # min/max range
+                min: { type: integer }
+                max: { type: integer }
+              minProperties: 1
+              additionalProperties: false
+            - type: object
+              properties:
+                exact: { type: integer }
+              required: [ exact ]
+              additionalProperties: false
+    additionalProperties: false
+required:
+- name
+- description
+- collectionSize
+additionalProperties: false

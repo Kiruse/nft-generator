@@ -1,15 +1,27 @@
 {
-  "name": "art_generator",
+  "name": "kiru-art-generator",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Customized fork of HashLips' Art Generator CLI program",
   "scripts": {
-    "build": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build:schemas": "coffee scripts/build-schemas.coffee",
+    "prepack": "rimraf dist && coffee scripts/build-schemas.coffee && coffee -c src -o dist",
+    "generate": "coffee src/index.coffee"
   },
-  "author": "Daniel Eugene Botha",
+  "author": "Kiruse",
+  "contributors": [
+    "HashLips",
+    "Daniel Eugene Botha"
+  ],
   "license": "ISC",
   "dependencies": {
-    "canvas": "^2.8.0"
+    "@ltd/j-toml": "^1.38.0",
+    "canvas": "^2.8.0",
+    "jsonschema": "^1.4.1",
+    "yaml": "^2.2.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.1.7",
+    "coffeescript": "^2.7.0",
+    "rimraf": "^5.0.1"
   }
 }
