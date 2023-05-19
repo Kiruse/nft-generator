@@ -86,8 +86,8 @@ extractWeight = (filename) ->
   [, weight] = filename.match(/#(\d+)\.(jpe?g|png)$/) ? []
   parseInt weight
 extractZIndex = (dirname) ->
-  [, index] = dirname.match(/^(\d+)\./) ? []
+  [, index] = dirname.match(/^(\d+)[.-]/) ? []
   parseInt index
 
 cleanAttributeName = (filename) -> filename.replace(/#\d+\.(jpe?g|png)$|\.(jpe?g|png)$/, '')
-cleanLayerName = (dirname) -> dirname.replace(/^\d+\./, '')
+cleanLayerName = (dirname) -> dirname.replace(/^\d+[.-]/, '')
