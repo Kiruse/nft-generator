@@ -42,6 +42,7 @@ normalizeConfig = (config, pwd) ->
   config.out = path.join pwd, config.out ? 'generated'
   config.imageSize ?= [350, 350]
   config.layout ?= {}
+  config.filenameTemplate ?= '{}'
   
   if config.restrict?.limit?
     limits = config.restrict.limit

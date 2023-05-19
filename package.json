@@ -3,24 +3,29 @@
   "version": "1.0.0",
   "description": "Customized fork of HashLips' Art Generator CLI program",
   "scripts": {
-    "setup": "yarn && cd node_modules/canvas && npm run install",
-    "prepack": "rimraf dist && coffee -c src -o dist",
+    "setup": "yarn && cd node_modules/canvas && yarn",
+    "prepack": "rimraf dist && coffee -o dist -c src",
     "generate": "cross-env NODE_ENV='development' coffee src/index.coffee"
   },
   "author": "Kiruse",
   "license": "MIT",
   "dependencies": {
+    "@helia/unixfs": "^1.2.2",
     "@ltd/j-toml": "^1.38.0",
     "canvas": "^2.8.0",
+    "chalk": "^5.2.0",
     "csv-stringify": "^6.4.0",
+    "helia": "^1.0.4",
     "jsonschema": "^1.4.1",
     "object-hash": "^3.0.0",
+    "ora": "^6.3.1",
     "yaml": "^2.2.2"
   },
   "devDependencies": {
     "@types/node": "^20.1.7",
     "coffeescript": "^2.7.0",
     "cross-env": "^7.0.3",
+    "multiformats": "^11.0.2",
     "rimraf": "^5.0.1"
   },
   "private": true

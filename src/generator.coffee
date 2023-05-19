@@ -1,13 +1,11 @@
 CSV = require 'csv-stringify/sync'
 fs = require 'node:fs/promises'
-hash = require 'object-hash'
 path = require 'node:path'
-{createCanvas, loadImage} = require 'canvas'
+Collection = require './collection'
+{getCombinationWeight} = require './utils'
 
 module.exports = class Generator
   constructor: (@config) ->
-    [width, height] = @config.imageSize
-    @canvas = createCanvas width, height
     @layers = []
   
   init: ->
@@ -39,7 +37,7 @@ module.exports = class Generator
     attrs = attrs.filter (entry) => entry.isFile()
       .filter (entry) => entry.name.match(/\.(jpe?g|png)$/)?
       .map (entry) => entry.name
-      .forEach (attr) => @readAttribute layer, attr
+    await Promise.all attrs.map (attr) => @readAttribute layer, attr
     layer
   readAttribute: (layer, attrname) ->
     name = cleanAttributeName attrname
@@ -49,22 +47,13 @@ module.exports = class Generator
     filepath = path.join layer.path, attrname
     attr =
       name: name
+      layer: layer
       weight: weight
       path: filepath
-      image: await loadImage filepath
+      image: await fs.readFile filepath
     layer.attributes[name] = attr
     layer.totalWeights += weight
     attr
-  
-  flush: ->
-    bytes = @canvas.toBuffer 'image/png'
-    [w, h] = @config.imageSize
-    ctx = @canvas.getContext '2d'
-    ctx.clearRect 0, 0, w, h
-    bytes
-  drawLayer: (layer, attribute) ->
-    ctx = @canvas.getContext '2d'
-    ctx.drawImage attribute.image, layer.position..., layer.size...
   
   # Generate all possible combinations of traits/attributes per layers
   generateCombinations: ->
@@ -79,115 +68,19 @@ module.exports = class Generator
         for attr in Object.values first.attributes
           yield [attr, subcombo...] for subcombo in subcombos
     [generate(@layers)...]
-  generateImages: (combos) ->
-    # TODO
-    throw Error 'not yet implemented'
-  generateMetadata: (combos) ->
-    # TODO
-    throw Error 'not yet implemented'
-  generateCSV: (combos) ->
-    data = combos.map (combo, tokenId) => [
+  generateCSV: (collection) ->
+    data = collection.map (combo, tokenId) => [
       tokenId + 1
       combo.map((attr) => attr.name)...
-      @getCombinationWeight combo
+      getCombinationWeight combo
     ]
     CSV.stringify [
       ['tokenId', ...@layers.map((layer) => layer.name), 'weight']
       data...
     ]
-  
-  getCombinationWeight: (combo) ->
-    total = 0
-    total += attr.weight for attr in combo
-    total
-  getTotalCombinationsWeight: (combos) ->
-    total = 0
-    total += @getCombinationWeight combo for combo in combos
-    total
-  
   # generate randomized collection by the configured settings
   # only generates the combinations, not the actual images & metadata
-  generateCollection: ->
-    combos = @generateCombinations().filter (combo) => @isValidCombination combo
-    if combos.length < @config.collectionSize
-      throw Error 'not enough combinations to generate collection'
-    limits = clone @config.restrict.limit
-    collection = []
-    
-    toMint = @config.collectionSize
-    getRandom = (combos) =>
-      idx = @getWeightedRandomIndex combos
-      [combo] = combos.splice idx, 1
-      combo
-    partition = (trait) => [
-        combos.filter (combo) => combo.some (attr) => attr.name is trait
-        combos.filter (combo) => combo.every (attr) => attr.name isnt trait
-      ]
-    
-    for trait of limits
-      if limits[trait].exact?
-        [subcombo, combos] = partition trait
-        collection = [
-          collection...
-          repeat(limits[trait].exact, => getRandom(subcombo))...
-        ]
-        toMint -= limits[trait].exact
-      else if limits[trait].min
-        [subcombo, remain] = partition trait
-        if subcombo.length < limits[trait].min
-          throw Error "not enough combinations with trait #{trait} to generate collection"
-        
-        collection = [
-          collection...
-          repeat(limits[trait].min, => getRandom(subcombo))...
-        ]
-        
-        # getRandom removes the selected combos from the pool, so we add the remaining subcombos back in
-        combos = [subcombo..., remain...]
-        toMint -= limits[trait].min
-    
-    for i in [0...toMint]
-      collection.push combo = getRandom combos
-      # console.log limits
-      for attr in combo
-        if limits[attr.name]?.max?
-          remain = --limits[attr.name].max
-          if remain is 0
-            combos = @removeTrait combos, attr.name
-            if combos.length < toMint - i
-              throw Error "not enough combinations with trait #{attr.name} to generate collection"
-    shuffle collection
-  
-  # remove all combinations with a specific trait
-  removeTrait: (combos, trait) -> combos.filter (combo) => combo.every (attr) => attr.name isnt trait
-  
-  # get a randomized index by weighted probability
-  getWeightedRandomIndex: (combos) ->
-    total = @getTotalCombinationsWeight combos
-    random = Math.floor Math.random() * total
-    
-    virtualIndex = 0
-    for [i, combo] from enumerate combos
-      weight = @getCombinationWeight combo
-      if random < virtualIndex + weight
-        return i
-      virtualIndex += weight
-    throw Error 'should not happen'
-  
-  # check if combination is valid based on config's restrictions
-  isValidCombination: (combo) ->
-    countOccurrences = (combo, traits) => traits.filter((trait) => combo.some (attr) => attr.name is trait).length
-    
-    # mutex means at most one named trait may appear per combination
-    if @config.restrict?.mutex?.length
-      return false if @config.restrict.mutex.some (forbidden) => countOccurrences(combo, forbidden) > 1
-    
-    # forbid means all named traits must not appear in the same combination together, but less are allowed
-    if @config.restrict?.forbid?.length
-      return false if @config.restrict.forbid.some (forbidden) => countOccurrences(combo, forbidden) is forbidden.length
-    
-    return true
-
+  generateCollection: -> new Collection(@config, @generateCombinations()).filterValid().pick().shuffle()
 
 extractWeight = (filename) ->
   [, weight] = filename.match(/#(\d+)\.(jpe?g|png)$/) ? []
@@ -198,20 +91,3 @@ extractZIndex = (dirname) ->
 
 cleanAttributeName = (filename) -> filename.replace(/#\d+\.(jpe?g|png)$|\.(jpe?g|png)$/, '')
 cleanLayerName = (dirname) -> dirname.replace(/^\d+\./, '')
-
-clone = (obj) => JSON.parse JSON.stringify obj
-enumerate = (iterable) ->
-  i = 0
-  yield [i++, value] for value in iterable
-repeat = (n, x) =>
-  if typeof x is 'function'
-    Array(n).fill(0).map (, i) => x(i)
-  else
-    Array(n).fill(x)
-shuffle = (array) => # shuffle array in-place
-  unless Array.isArray array
-    throw Error 'not an array'
-  for i in [0...array.length]
-    j = Math.floor Math.random() * array.length
-    [array[i], array[j]] = [array[j], array[i]]
-  array

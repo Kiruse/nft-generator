@@ -9,6 +9,9 @@ properties:
   imageSize: { '$ref': '#/$defs/vector' }
   in:  { type: string }
   out: { type: string }
+  filenameTemplate: { type: string }
+  nameTemplate: { type: string }
+  descTemplate: { type: string }
   
   restrict:
     type: object
@@ -53,6 +56,7 @@ required:
 - name
 - description
 - collectionSize
+- nameTemplate
 additionalProperties: false
 
 '$defs':
