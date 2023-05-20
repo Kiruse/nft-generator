@@ -49,9 +49,9 @@ module.exports = class Combinations
       @enableTraits()
       shuffle order
       combo = _combo.slice()
-      random = Math.random()
       try
         for [round2, i] from enumerate order
+          random = Math.random()
           layer = @layers[i]
           @disableForbid combo
           @disableMutex combo
