@@ -14,6 +14,7 @@ exports.shuffle = (array) => # shuffle array in-place
     j = Math.floor Math.random() * array.length
     [array[i], array[j]] = [array[j], array[i]]
   array
+exports.sleep = (timeout) => new Promise (resolve) => setTimeout resolve, timeout
 
 exports.getCombinationWeight = (combo) ->
   total = 0

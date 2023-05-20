@@ -12,6 +12,7 @@ properties:
   filenameTemplate: { type: string }
   nameTemplate: { type: string }
   descTemplate: { type: string }
+  externalUrlTemplate: { type: string }
   
   restrict:
     type: object

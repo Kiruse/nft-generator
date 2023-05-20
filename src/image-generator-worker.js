@@ -1,7 +1,7 @@
 const {createCanvas, loadImage} = require('canvas')
 const fs = require('node:fs/promises')
+const path = require('node:path')
 
-let running = true;
 let busy = false;
 process.on('message', async (msg) => {
   if (busy) {
@@ -15,6 +15,8 @@ process.on('message', async (msg) => {
   
   const { id, config, combo } = msg;
   try {
+    await fs.mkdir(path.join(config.out, 'images'), { recursive: true });
+    
     busy = true;
     const canvas = await createCanvas(...config.imageSize);
     const ctx = canvas.getContext('2d');
@@ -35,4 +37,4 @@ process.on('message', async (msg) => {
   }
 });
 
-const getFilename = (config, id) => `${config.out}/${config.filenameTemplate}.png`.replace('{}', id);
+const getFilename = (config, id) => path.join(config.out, 'images', config.filenameTemplate.replace('{}', id) + '.png');

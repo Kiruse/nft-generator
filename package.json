@@ -17,7 +17,6 @@
     "csv-stringify": "^6.4.0",
     "helia": "^1.0.4",
     "jsonschema": "^1.4.1",
-    "object-hash": "^3.0.0",
     "ora": "^6.3.1",
     "yaml": "^2.2.2"
   },
@@ -26,6 +25,7 @@
     "coffeescript": "^2.7.0",
     "cross-env": "^7.0.3",
     "multiformats": "^11.0.2",
+    "object-hash": "^3.0.0",
     "rimraf": "^5.0.1"
   },
   "private": true
