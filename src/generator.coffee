@@ -18,12 +18,17 @@ module.exports = class Generator
     files = files.filter (entry) => entry.isDirectory()
       .map (entry) => entry.name
     
-    layers = await Promise.all files.map (file, i) => @readLayer @config.in, file, i
-    layers.sort (a, b) => b.index - a.index
-  readLayer: (dir, layername, index) ->
+    layers = await Promise.all files.map (file) => @readLayer @config.in, file
+    layers.sort (a, b) => a.name.localeCompare b.name
+      .sort (a, b) =>
+        return  1 unless a.index?
+        return -1 unless b.index?
+        b.index - a.index
+      .forEach (layer, i) => layer.index = i
+    layers
+  readLayer: (dir, layername) ->
     name = cleanLayerName layername
     zIndex = extractZIndex layername
-    zIndex = index if isNaN zIndex
     
     layer =
       name: name
@@ -61,6 +66,10 @@ module.exports = class Generator
     normalizeTraits = (traits) =>
       traits.forEach (trait, i) =>
         traits[i] = @getLayerByTrait(trait).attributes[trait]
+      traits.sort (a, b) =>
+        indexA = @getLayerIndex a.layer
+        indexB = @getLayerIndex b.layer
+        indexA - indexB
     if @config.restrict.mutex?
       @config.restrict.mutex.forEach (traits) => normalizeTraits traits
     if @config.restrict.forbid?
@@ -80,15 +89,16 @@ module.exports = class Generator
   
   generateCollection: (n, onUpdate) ->
     combinations = new Combinations @config, @layers
-    combos = await combinations.pick n, onUpdate
-    new Collection(@config, combos).shuffle()
+    # combos = await combinations.pick n, onUpdate
+    # new Collection(@config, combos).shuffle()
 
 extractWeight = (filename) ->
   [, weight] = filename.match(/#(\d+)\.(jpe?g|png)$/) ? []
   parseInt weight
 extractZIndex = (dirname) ->
   [, index] = dirname.match(/^(\d+)[.-]/) ? []
-  parseInt index
+  index = parseInt index
+  return index unless isNaN index
 
 cleanAttributeName = (filename) -> filename.replace(/#\d+\.(jpe?g|png)$|\.(jpe?g|png)$/, '')
 cleanLayerName = (dirname) -> dirname.replace(/^\d+[.-]/, '')

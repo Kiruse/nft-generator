@@ -1,4 +1,5 @@
 exports.clone = (obj) => JSON.parse JSON.stringify obj
+exports.collect = (iterable) => if Array.isArray iterable then iterable else [iterable...]
 exports.enumerate = (iterable) ->
   i = 0
   yield [i++, value] for value in iterable
@@ -23,3 +24,9 @@ exports.getCombinationWeight = (combo) ->
 
 exports.pick = (obj, props...) => Object.fromEntries Object.entries(obj).filter(([key]) => key in props)
 exports.omit = (obj, props...) => Object.fromEntries Object.entries(obj).filter(([key]) => key not in props)
+
+exports.first = (iterable) ->
+  for item from iterable
+    return item
+
+exports.displayTraits = (attrs) -> attrs.map((attr) => attr.name).join(', ')
