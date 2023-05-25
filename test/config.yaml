@@ -1,0 +1,5 @@
+name: 'Test Collection'
+description: 'Non-existent collection for testing purposes'
+collectionSize: 5000
+imageSize: [ 1280, 1280 ]
+nameTemplate: 'Test {}'

@@ -3,6 +3,8 @@ exports.collect = (iterable) => if Array.isArray iterable then iterable else [it
 exports.enumerate = (iterable) ->
   i = 0
   yield [i++, value] for value in iterable
+exports.isArraylike = (obj) => obj? and typeof obj is 'object' and typeof obj.length is 'number'
+exports.isIterable = (obj) => obj? and typeof obj[Symbol.iterator] is 'function'
 exports.repeat = (n, x) =>
   if typeof x is 'function'
     Array(n).fill(0).map (, i) => x(i)
