@@ -24,38 +24,33 @@ run = ->
   await createSpinner 'Loading collection data...', => gen.init()
   
   combinations = await createSpinner 'Generating combinations...', => await gen.generateCollection()
-  tree = combinations.root
-  # combo = tree.find ['Purple', 'Tux', 'Yawn', 'UltraMane', 'TopGun', 'Rigorous']
-  # tree.remove [combo...]
   combos = combinations.pick 5050
-  [combo] = combos
-  console.log 'has', displayTraits(combo), ':', tree.has(combo)
   
-  # count = 0
-  # await createSpinner 'Checking for duplicates', (spinner) =>
-  #   hashes = {}
-  #   for combo in combos
-  #     count++
-  #     h = hash(combo)
-  #     spinner.text = "Checking for duplicates [#{chalk.yellow count}/#{chalk.cyan total}] #{chalk.grey displayTraits combo}"
-  #     if hashes[h]?
-  #       throw Error "duplicates found: #{hashes[h]} and #{count}"
-  #     hashes[h] = count
-  #     await sleep 0
+  count = 0
+  await createSpinner 'Checking for duplicates', (spinner) =>
+    hashes = {}
+    for combo in combos
+      count++
+      h = hash(combo)
+      spinner.text = "Checking for duplicates [#{chalk.yellow count}/#{chalk.cyan total}] #{chalk.grey displayTraits combo}"
+      if hashes[h]?
+        throw Error "duplicates found: #{hashes[h]} and #{count}"
+      hashes[h] = count
+      await sleep 0
   
-  # count = 0
-  # await createSpinner '', (spinner) =>
-  #   await collection.generateImages (tokenId, combo) =>
-  #     count++
-  #     spinner.text = "Generating images [#{chalk.yellow count}/#{chalk.cyan total}] #{chalk.grey displayTraits combo}"
+  count = 0
+  await createSpinner '', (spinner) =>
+    await collection.generateImages (tokenId, combo) =>
+      count++
+      spinner.text = "Generating images [#{chalk.yellow count}/#{chalk.cyan total}] #{chalk.grey displayTraits combo}"
   
-  # count = 0
-  # await createSpinner '', (spinner) =>
-  #   await collection.generateMetadata (tokenId, combo) =>
-  #     count++
-  #     spinner.text = "Generating metadata [#{chalk.yellow count}/#{chalk.cyan total}] #{chalk.grey displayTraits combo}"
+  count = 0
+  await createSpinner '', (spinner) =>
+    await collection.generateMetadata (tokenId, combo) =>
+      count++
+      spinner.text = "Generating metadata [#{chalk.yellow count}/#{chalk.cyan total}] #{chalk.grey displayTraits combo}"
   
-  # await createSpinner 'Generating CSV', => collection.generateCSV gen.layers
+  await createSpinner 'Generating CSV', => collection.generateCSV gen.layers
   process.exit 0
 run().catch (err) ->
   if INDEV

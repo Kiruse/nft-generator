@@ -89,7 +89,7 @@ class Tree
         # 6. first node is taken in original form & relinked to the last round's clones
         # 7. backpropagate weight loss & remove last node
         while index > 0
-          prevs = nodes.prev path[index-1]
+          prevs = nodes.prev().filter (node) => isStrictNode node, path[index-1]
           if prevs.isEmpty()
             prevs = nodes.prev()
             throw Error 'should never reach' if prevs.isEmpty()
@@ -123,22 +123,7 @@ class Tree
     for node from @prev
       node.unlink(this)
       node.removeSelf() if node.shouldRemove()
-    console.log 'root weight:', @combinations.root.weight
     return
-  removeNext: (search) ->
-    switch
-      when typeof search is 'string'
-        if next = @next[search]
-          backpropagateWeightLoss this, next.weight
-          @unlink next
-      when search.name? then return @removeNext search.name
-      else
-        for _, next of @next
-          if isMatchingNode next, search
-            backpropagateWeightLoss this, next.weight
-            @unlink next
-            break
-    return this
   
   # shallow clone of this node
   clone: ->
@@ -299,6 +284,14 @@ isMatchingNode = (node, search) =>
     node.attr?.name is search
   else
     (node is search) or (node.attr is search) or (search?.attr? and node.attr is search?.attr)
+isStrictNode = (node, search) =>
+  switch
+    when typeof search is 'string'
+      node.attr?.name is search
+    when search instanceof Tree
+      node is search
+    else
+      node.attr is search
 
 # run up the graph and subtract this node's weight from every ancestor node
 backpropagateWeightLoss = (node, weight) =>
@@ -314,3 +307,12 @@ backpropagateWeightLoss = (node, weight) =>
 
 # useful for debugging
 Combinations.displayTraits = displayTraits = (trees) -> collect(trees).map((tree) => tree.attr?.name ? '<root>').join(', ')
+
+timed = (name, cb) -> ->
+  start = performance.now()
+  try
+    return cb(arguments...)
+  finally
+    end = performance.now()
+    if end - start > 100
+      console.warn "#{name} took #{end - start}ms"
