@@ -52,9 +52,13 @@ class Tree
       delete @next[other.attr.name]
       other.prev.delete this
     return this
-  relink: (first, second) ->
-    @unlink first
-    @link second
+  relink: (node) ->
+    unless node.attr?.name
+      throw Error 'Invalid relink node, expected Tree-like'
+    trait = node.attr.name
+    @next[trait].prev.delete this if @next[trait]?
+    @next[trait] = node
+    node.prev.add this
     return this
   
   remove: (path) ->
@@ -70,23 +74,42 @@ class Tree
         else
           @remove [this, path[0]]
       else
-        clones = new Map()
-        nodes = @find path[0]
-        _subclone = (search) =>
-          for node from nodes
-            for _, next of node.next
-              node.relink next, next.subclone search, clones
-        for i in [1...path.length-1]
-          break if nodes.isEmpty()
-          _subclone path[i]
-          nodes = nodes.find path[i]
-        return this if nodes.isEmpty()
-        last = path[path.length-1]
-        _subclone last
-        nodes = nodes.findBefore last
-        for node from nodes
-          node.removeNext last
-          node.removeSelf() if node.shouldRemove()
+        # finding the last node with the entire path ensures that every single node along the path
+        # is in fact in the path. compared to the previous algo, we save on checking if the node is valid
+        clones = nodes = last = @find path
+        index = path.length - 1
+        beforeLast = undefined
+        
+        # the algo is as follows:
+        # 1. last node is found & original used to proceed
+        # 2. previous nodes found, filtered by path & cloned
+        # 3. for each previous node, relink to the last round's clones (except 1st round where originals are used)
+        # 4. last round's clones are now the previous nodes
+        # 5. repeat from 2. until the first node is reached
+        # 6. first node is taken in original form & relinked to the last round's clones
+        # 7. backpropagate weight loss & remove last node
+        while index > 0
+          prevs = nodes.prev path[index-1]
+          if prevs.isEmpty()
+            prevs = nodes.prev()
+            throw Error 'should never reach' if prevs.isEmpty()
+          else
+            index--
+          nodes = prevs.clone()
+          
+          if index > 0
+            prevs.map (prev) => prev.clone()
+          beforeLast ?= prevs
+          
+          for prev from prevs
+            prev.relink node for node from clones
+          clones = prevs
+        
+        for prev from beforeLast
+          for node from last
+            backpropagateWeightLoss prev, node.weight
+            prev.unlink node
+          prev.removeSelf() if prev.shouldRemove()
     @removeSelf() if @shouldRemove()
     return this
   removeTrait: (trait) ->
@@ -117,22 +140,13 @@ class Tree
             break
     return this
   
-  # create a new subtree from this node until the given searched node. the new subtree will clone
-  # every single node up until the given node, including their siblings, but not the given node itself.
-  # if this subtree does not contain the node, do nothing
-  subclone: (search, clones) ->
-    return clones.get this if clones.has this
-    return this unless @has search
-    result = new Tree @combinations, @attr
-    result._weight = @weight
+  # shallow clone of this node
+  clone: ->
+    clone = new Tree @combinations, @attr
+    clone._weight = @weight
     for _, next of @next
-      unless clones.has next
-        if next.has search
-          clones.set next, next.subclone(search, clones)
-        else
-          clones.set next, next
-      result.link clones.get next
-    return result
+      clone.link next
+    clone
   
   # attempt to find the unique subtrees for a given trait. returns a set
   find: (search) ->
@@ -163,6 +177,9 @@ class Tree
       else
         Trees.wrap Object.values(@next).find((node) => isMatchingNode node, search), @combinations
     nodes.filter (node) => node?
+  findPrev: (search) ->
+    new Trees @combinations, @prev
+      .filter (node) => isMatchingNode node, search
   findBefore: (search) ->
     switch
       when typeof search is 'string'
@@ -183,6 +200,7 @@ class Tree
   prev: -> new Trees @combinations, @prev
   has: (trait) -> !!@find(trait).size
   hasNext: (search) -> !!@findNext(search).size
+  hasPrev: (search) -> !!@findPrev(search).size
   isLast: -> @index is @combinations.layers.length-1
   isEmpty: -> Object.keys(@next).length is 0
   shouldRemove: -> @isEmpty() and @attr? and not @isLast()
@@ -221,22 +239,28 @@ class Trees
     @trees = new Set()
     return this
   
+  clone: -> new Trees @combinations, new Set(@trees)
+  
   find:       (trait) -> new Trees @combinations, new Set(collect(@trees).flatMap (tree) => collect tree.find(trait))
   findBefore: (trait) -> new Trees @combinations, new Set(collect(@trees).flatMap (tree) => collect tree.findBefore(trait))
-  prev: ->
-    nodes = new Set()
-    for tree from @trees
-      nodes.add node for node from tree.prev
-    new Trees @combinations, nodes
-  next: ->
-    nodes = new Set()
-    for tree from @trees
-      nodes.add node for _, node of tree.next
-    new Trees @combinations, nodes
+  prev: (search) ->
+    nodes = @clone().flatMap (tree) => collect tree.prev
+    if search?
+      nodes.filter (node) => isMatchingNode node, search
+    nodes
+  next: (search) ->
+    nodes = @clone().flatMap (tree) => Object.values tree.next
+    if search?
+      nodes.filter (node) => node.hasNext search
+    nodes
   has: (trait) -> !!@find(trait).size
   hasNext: (search) ->
     for tree from @trees
       return true if tree.hasNext search
+    return false
+  hasPrev: (search) ->
+    for tree from @trees
+      return true if tree.hasPrev search
     return false
   map: (fn) ->
     @trees = new Set collect(@trees).map fn
@@ -270,7 +294,11 @@ filterCombinationTree = (combinations) ->
 getLayerOfTrait = (combinations, trait) =>
   combinations.layers.find (layer) => layer.attributes[trait]?
 
-isMatchingNode = (node, search) => (node is search) or (node.attr is search) or (search?.attr? and node.attr is search?.attr)
+isMatchingNode = (node, search) =>
+  if typeof search is 'string'
+    node.attr?.name is search
+  else
+    (node is search) or (node.attr is search) or (search?.attr? and node.attr is search?.attr)
 
 # run up the graph and subtract this node's weight from every ancestor node
 backpropagateWeightLoss = (node, weight) =>
